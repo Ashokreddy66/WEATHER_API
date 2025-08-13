@@ -88,66 +88,107 @@
   </div>
 
   <script>
-    const apiKey = "1616f06f8e9cbd956f12232c9761cfa7";
-    const searchBtn = document.getElementById("searchBtn");
-    const cityInput = document.getElementById("cityInput");
-    const loading = document.getElementById("loading");
-    const error = document.getElementById("error");
-    const weatherResult = document.getElementById("weatherResult");
+  const apiKey = "1616f06f8e9cbd956f12232c9761cfa7";
+  const searchBtn = document.getElementById("searchBtn");
+  const cityInput = document.getElementById("cityInput");
+  const loading = document.getElementById("loading");
+  const error = document.getElementById("error");
+  const weatherResult = document.getElementById("weatherResult");
 
-    async function fetchWeather(city) {
-      loading.style.display = "block";
-      error.style.display = "none";
-      weatherResult.style.display = "none";
 
-      try {
-        const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("City not found");
-        const data = await res.json();
+  let searchHistory = JSON.parse(localStorage.getItem("weatherSearches")) || [];
 
-        document.getElementById("cityName").textContent = `${data.name}, ${data.sys.country}`;
-        document.getElementById("temperature").textContent = `${Math.round(data.main.temp)}°C`;
-        document.getElementById("condition").textContent = data.weather[0].description;
-        document.getElementById("humidity").textContent = data.main.humidity;
-        document.getElementById("wind").textContent = (data.wind.speed * 3.6).toFixed(1);
 
-        const iconCode = data.weather[0].icon;
-        document.getElementById("icon").src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+  async function fetchWeather(city) {
+    loading.style.display = "block";
+    error.style.display = "none";
+    weatherResult.style.display = "none";
 
-        changeBackground(data.weather[0].main);
+    try {
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("City not found");
+      const data = await res.json();
 
-        weatherResult.style.display = "block";
-      } catch (err) {
-        error.style.display = "block";
-      } finally {
-        loading.style.display = "none";
+      document.getElementById("cityName").textContent = `${data.name}, ${data.sys.country}`;
+      document.getElementById("temperature").textContent = `${Math.round(data.main.temp)}°C`;
+      document.getElementById("condition").textContent = data.weather[0].description;
+      document.getElementById("humidity").textContent = data.main.humidity;
+      document.getElementById("wind").textContent = (data.wind.speed * 3.6).toFixed(1);
+
+      const iconCode = data.weather[0].icon;
+      document.getElementById("icon").src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+
+      changeBackground(data.weather[0].main);
+
+      weatherResult.style.display = "block";
+
+      
+      if (!searchHistory.includes(city)) {
+        searchHistory.push(city);
+        localStorage.setItem("weatherSearches", JSON.stringify(searchHistory));
       }
+
+      displaySearchHistory();
+    } catch (err) {
+      error.style.display = "block";
+    } finally {
+      loading.style.display = "none";
+    }
+  }
+
+
+  function changeBackground(condition) {
+    let bg;
+    switch (condition.toLowerCase()) {
+      case "clear": bg = "linear-gradient(135deg, #ffcc33, #ff9900)"; break;
+      case "clouds": bg = "linear-gradient(135deg, #757F9A, #D7DDE8)"; break;
+      case "rain": bg = "linear-gradient(135deg, #667db6, #0082c8)"; break;
+      case "snow": bg = "linear-gradient(135deg, #83a4d4, #b6fbff)"; break;
+      case "thunderstorm": bg = "linear-gradient(135deg, #3a6073, #16222a)"; break;
+      default: bg = "linear-gradient(135deg, #74ABE2, #5563DE)";
+    }
+    document.body.style.background = bg;
+  }
+
+
+  function displaySearchHistory() {
+    let historyContainer = document.getElementById("searchHistory");
+    if (!historyContainer) {
+      historyContainer = document.createElement("div");
+      historyContainer.id = "searchHistory";
+      historyContainer.style.marginTop = "10px";
+      historyContainer.style.fontSize = "0.9rem";
+      document.querySelector(".weather-app").appendChild(historyContainer);
     }
 
-    function changeBackground(condition) {
-      let bg;
-      switch (condition.toLowerCase()) {
-        case "clear": bg = "linear-gradient(135deg, #ffcc33, #ff9900)"; break;
-        case "clouds": bg = "linear-gradient(135deg, #757F9A, #D7DDE8)"; break;
-        case "rain": bg = "linear-gradient(135deg, #667db6, #0082c8)"; break;
-        case "snow": bg = "linear-gradient(135deg, #83a4d4, #b6fbff)"; break;
-        case "thunderstorm": bg = "linear-gradient(135deg, #3a6073, #16222a)"; break;
-        default: bg = "linear-gradient(135deg, #74ABE2, #5563DE)";
-      }
-      document.body.style.background = bg;
+    historyContainer.innerHTML = "<strong>Recent Searches:</strong> " +
+      searchHistory.map(city => `<span style="cursor:pointer; color:#ffcc00;">${city}</span>`).join(", ");
+
+    
+    historyContainer.querySelectorAll("span").forEach(span => {
+      span.addEventListener("click", () => {
+        cityInput.value = span.textContent;
+        fetchWeather(span.textContent);
+      });
+    });
+  }
+
+ 
+  searchBtn.addEventListener("click", () => {
+    const city = cityInput.value.trim();
+    if (city) fetchWeather(city);
+  });
+
+  cityInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      searchBtn.click();
     }
+  });
 
-    searchBtn.addEventListener("click", () => {
-      const city = cityInput.value.trim();
-      if (city) fetchWeather(city);
-    });
 
-    cityInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        searchBtn.click();
-      }
-    });
-  </script>
+  displaySearchHistory();
+</script>
+
 </body>
 </html>
