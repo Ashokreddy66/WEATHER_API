@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Weather App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    body {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #74ABE2, #5563DE);
+      color: white;
+      transition: background 0.5s ease;
+    }
+    .weather-app {
+      width: 90%;
+      max-width: 400px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    input {
+      width: 80%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background: #ffcc00;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #ffdb4d;
+    }
+    .weather-icon {
+      width: 100px;
+      margin: 10px auto;
+    }
+    .loading {
+      font-size: 1rem;
+      color: #ffcc00;
+    }
+    .error {
+      font-size: 0.9rem;
+      color: #ff6666;
+    }
+    .details {
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="weather-app">
+    <h2>🌤 Weather App</h2>
+    <input type="text" id="cityInput" placeholder="Enter city name">
+    <button id="searchBtn">Search</button>
+    <p class="loading" id="loading" style="display:none;">Loading...</p>
+    <p class="error" id="error" style="display:none;">City not found!</p>
+    <div id="weatherResult" style="display:none;">
+      <h3 id="cityName"></h3>
+      <img id="icon" class="weather-icon" src="">
+      <h1 id="temperature"></h1>
+      <p id="condition"></p>
+      <div class="details">
+        <p>💧 Humidity: <span id="humidity"></span>%</p>
+        <p>🌬 Wind: <span id="wind"></span> km/h</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const apiKey = "1616f06f8e9cbd956f12232c9761cfa7";
+  const searchBtn = document.getElementById("searchBtn");
+  const cityInput = document.getElementById("cityInput");
+  const loading = document.getElementById("loading");
+  const error = document.getElementById("error");
+  const weatherResult = document.getElementById("weatherResult");
+
+
+  let searchHistory = JSON.parse(localStorage.getItem("weatherSearches")) || [];
+
+
+  async function fetchWeather(city) {
+    loading.style.display = "block";
+    error.style.display = "none";
+    weatherResult.style.display = "none";
+
+    try {
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("City not found");
+      const data = await res.json();
+
+      document.getElementById("cityName").textContent = `${data.name}, ${data.sys.country}`;
+      document.getElementById("temperature").textContent = `${Math.round(data.main.temp)}°C`;
+      document.getElementById("condition").textContent = data.weather[0].description;
+      document.getElementById("humidity").textContent = data.main.humidity;
+      document.getElementById("wind").textContent = (data.wind.speed * 3.6).toFixed(1);
+
+      const iconCode = data.weather[0].icon;
+      document.getElementById("icon").src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+
+      changeBackground(data.weather[0].main);
+
+      weatherResult.style.display = "block";
+
+      
+      if (!searchHistory.includes(city)) {
+        searchHistory.push(city);
+        localStorage.setItem("weatherSearches", JSON.stringify(searchHistory));
+      }
+
+      displaySearchHistory();
+    } catch (err) {
+      error.style.display = "block";
+    } finally {
+      loading.style.display = "none";
+    }
+  }
+
+
+  function changeBackground(condition) {
+    let bg;
+    switch (condition.toLowerCase()) {
+      case "clear": bg = "linear-gradient(135deg, #ffcc33, #ff9900)"; break;
+      case "clouds": bg = "linear-gradient(135deg, #757F9A, #D7DDE8)"; break;
+      case "rain": bg = "linear-gradient(135deg, #667db6, #0082c8)"; break;
+      case "snow": bg = "linear-gradient(135deg, #83a4d4, #b6fbff)"; break;
+      case "thunderstorm": bg = "linear-gradient(135deg, #3a6073, #16222a)"; break;
+      default: bg = "linear-gradient(135deg, #74ABE2, #5563DE)";
+    }
+    document.body.style.background = bg;
+  }
+
+
+  function displaySearchHistory() {
+    let historyContainer = document.getElementById("searchHistory");
+    if (!historyContainer) {
+      historyContainer = document.createElement("div");
+      historyContainer.id = "searchHistory";
+      historyContainer.style.marginTop = "10px";
+      historyContainer.style.fontSize = "0.9rem";
+      document.querySelector(".weather-app").appendChild(historyContainer);
+    }
+
+    historyContainer.innerHTML = "<strong>Recent Searches:</strong> " +
+      searchHistory.map(city => `<span style="cursor:pointer; color:#ffcc00;">${city}</span>`).join(", ");
+
+    
+    historyContainer.querySelectorAll("span").forEach(span => {
+      span.addEventListener("click", () => {
+        cityInput.value = span.textContent;
+        fetchWeather(span.textContent);
+      });
+    });
+  }
+
+ 
+  searchBtn.addEventListener("click", () => {
+    const city = cityInput.value.trim();
+    if (city) fetchWeather(city);
+  });
+
+  cityInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      searchBtn.click();
+    }
+  });
+
+
+  displaySearchHistory();
+</script>
+
+</body>
+</html>
